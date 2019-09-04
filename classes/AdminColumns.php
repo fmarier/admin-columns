@@ -7,6 +7,7 @@ use AC\Admin\Page;
 use AC\Admin\Section\Restore;
 use AC\Check;
 use AC\Deprecated;
+use AC\ListScreen\Post;
 use AC\Screen\QuickEdit;
 use AC\Table;
 use AC\ThirdParty;
@@ -29,7 +30,7 @@ class AdminColumns extends Plugin {
 	private $api;
 
 	/**
-	 * @var ListScreen[]
+	 * @var ListScreenTypes
 	 */
 	private $list_screens;
 
@@ -89,6 +90,9 @@ class AdminColumns extends Plugin {
 		add_action( 'wp_ajax_ac_get_column_value', array( $this, 'table_ajax_value' ) );
 
 		add_filter( 'wp_redirect', array( $this, 'redirect_after_status_change' ) );
+
+		add_action( 'init', array( $this, 'register_list_screens' ) );
+
 	}
 
 	/**
@@ -195,13 +199,13 @@ class AdminColumns extends Plugin {
 
 	/**
 	 * Add a settings link to the Admin Columns entry in the plugin overview screen
-	 * @since 1.0
-	 * @see   filter:plugin_action_links
 	 *
 	 * @param array  $links
 	 * @param string $file
 	 *
 	 * @return array
+	 * @see   filter:plugin_action_links
+	 * @since 1.0
 	 */
 	public function add_settings_link( $links, $file ) {
 		if ( $file === $this->get_basename() ) {
@@ -219,16 +223,16 @@ class AdminColumns extends Plugin {
 	}
 
 	/**
-	 * @since 3.0
 	 * @return API
+	 * @since 3.0
 	 */
 	public function api() {
 		return $this->api;
 	}
 
 	/**
-	 * @since 2.2
 	 * @return Admin Settings class instance
+	 * @since 2.2
 	 */
 	public function admin() {
 		return $this->admin;
@@ -245,11 +249,7 @@ class AdminColumns extends Plugin {
 	 * @return ListScreen[]
 	 */
 	public function get_list_screens() {
-		if ( null === $this->list_screens ) {
-			$this->register_list_screens();
-		}
-
-		return $this->list_screens;
+		return ListScreenTypes::instance()->get_list_screens();
 	}
 
 	/**
@@ -258,7 +258,7 @@ class AdminColumns extends Plugin {
 	 * @return self
 	 */
 	public function register_list_screen( ListScreen $list_screen ) {
-		$this->list_screens[ $list_screen->get_key() ] = $list_screen;
+		ListScreenTypes::instance()->register_list_screen( $list_screen );
 
 		return $this;
 	}
@@ -267,26 +267,26 @@ class AdminColumns extends Plugin {
 	 * Register List Screens
 	 */
 	public function register_list_screens() {
-		$list_screens = array();
 
 		// Post types
 		foreach ( $this->get_post_types() as $post_type ) {
-			$list_screens[] = new ListScreen\Post( $post_type );
+			ListScreenTypes::instance()->register_list_screen( new ListScreen\Post( $post_type->name, $post_type->label ) );
 		}
 
-		$list_screens[] = new ListScreen\Media();
-		$list_screens[] = new ListScreen\Comment();
+		// todo
+		//$list_screens[] = new ListScreen\Media();
+		//$list_screens[] = new ListScreen\Comment();
 
 		// Users, not for network users
-		if ( ! is_multisite() ) {
-			$list_screens[] = new ListScreen\User();
-		}
+		//if ( ! is_multisite() ) {
+		//	$list_screens[] = new ListScreen\User();
+		//}
 
-		foreach ( $list_screens as $list_screen ) {
-			$this->register_list_screen( $list_screen );
-		}
+//		foreach ( $list_screens as $list_screen ) {
+//			$this->register_list_screen( $list_screen );
+//		}
 
-		do_action( 'ac/list_screens', $this );
+		//do_action( 'ac/list_screens', $this );
 	}
 
 	/**
@@ -301,26 +301,27 @@ class AdminColumns extends Plugin {
 
 	/**
 	 * Get a list of post types for which Admin Columns is active
-	 * @since 1.0
 	 * @return array List of post type keys (e.g. post, page)
+	 * @since 1.0
 	 */
 	public function get_post_types() {
 		$post_types = get_post_types( array(
 			'_builtin' => false,
 			'show_ui'  => true,
-		) );
+		), 'objects' );
 
 		foreach ( array( 'post', 'page' ) as $builtin ) {
 			if ( post_type_exists( $builtin ) ) {
-				$post_types[ $builtin ] = $builtin;
+				$post_types[] = get_post_type_object( $builtin );
 			}
 		}
 
 		/**
 		 * Filter the post types for which Admin Columns is active
-		 * @since 2.0
 		 *
 		 * @param array $post_types List of active post type names
+		 *
+		 * @since 2.0
 		 */
 		return apply_filters( 'ac/post_types', $post_types );
 	}
@@ -363,11 +364,11 @@ class AdminColumns extends Plugin {
 
 	/**
 	 * Redirect the user to the Admin Columns add-ons page after activation/deactivation of an add-on from the add-ons page
-	 * @since 2.2
 	 *
 	 * @param $location
 	 *
 	 * @return string
+	 * @since 2.2
 	 */
 	public function redirect_after_status_change( $location ) {
 		global $pagenow;
@@ -398,10 +399,10 @@ class AdminColumns extends Plugin {
 	}
 
 	/**
-	 * @deprecated 3.1.5
-	 * @since      3.0
-	 *
 	 * @param $file
+	 *
+	 * @since      3.0
+	 * @deprecated 3.1.5
 	 */
 	public function get_plugin_version( $file ) {
 		_deprecated_function( __METHOD__, '3.1.5' );
@@ -425,12 +426,11 @@ class AdminColumns extends Plugin {
 	}
 
 	/**
-	 * @since      3.0
-	 * @deprecated 3.2
-	 *
 	 * @param string $key
 	 *
 	 * @return ListScreen|false
+	 * @since      3.0
+	 * @deprecated 3.2
 	 */
 	public function get_list_screen( $key ) {
 		_deprecated_function( __METHOD__, '3.2', 'ListScreenFactory::create()' );
@@ -441,8 +441,8 @@ class AdminColumns extends Plugin {
 	/**
 	 * @param string $key
 	 *
-	 * @deprecated 3.2
 	 * @return bool
+	 * @deprecated 3.2
 	 */
 	public function list_screen_exists( $key ) {
 		_deprecated_function( __METHOD__, '3.2' );
@@ -451,8 +451,8 @@ class AdminColumns extends Plugin {
 	}
 
 	/**
-	 * @deprecated 3.2
 	 * @return Groups
+	 * @deprecated 3.2
 	 */
 	public function list_screen_groups() {
 		_deprecated_function( __METHOD__, '3.1.5', 'ListScreenGroups::get_groups' );
@@ -461,8 +461,8 @@ class AdminColumns extends Plugin {
 	}
 
 	/**
-	 * @deprecated 3.2
 	 * @return Groups
+	 * @deprecated 3.2
 	 */
 	public function column_groups() {
 		_deprecated_function( __METHOD__, '3.2' );
@@ -472,9 +472,9 @@ class AdminColumns extends Plugin {
 
 	/**
 	 * Contains simple helper methods
-	 * @since      3.0
-	 * @deprecated 3.2
 	 * @return Helper
+	 * @deprecated 3.2
+	 * @since      3.0
 	 */
 	public function helper() {
 		_deprecated_function( __METHOD__, '3.2', 'ac_helper()' );
@@ -493,8 +493,8 @@ class AdminColumns extends Plugin {
 	}
 
 	/**
-	 * @deprecated 3.4
 	 * @return Admin\Page\Columns
+	 * @deprecated 3.4
 	 */
 	public function admin_columns_screen() {
 		_deprecated_function( __METHOD__, '3.4' );
