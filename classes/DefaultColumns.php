@@ -17,7 +17,7 @@ class DefaultColumns {
 	}
 
 	/**
-	 * @return array
+	 * @return array Data
 	 */
 	public function get( $list_screen_key ) {
 		return get_option( $this->get_option_name( $list_screen_key ), array() );

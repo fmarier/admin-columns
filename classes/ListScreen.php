@@ -457,7 +457,7 @@ abstract class ListScreen {
 	 */
 	public function get_columns() {
 		if ( null === $this->columns ) {
-			$this->set_columns();
+			//$this->set_columns();
 		}
 
 		return $this->columns;
@@ -511,21 +511,6 @@ abstract class ListScreen {
 	}
 
 	/**
-	 * @param string $type
-	 *
-	 * @return false|string
-	 */
-	public function get_class_by_type( $type ) {
-		$column = $this->get_column_by_type( $type );
-
-		if ( ! $column ) {
-			return false;
-		}
-
-		return get_class( $column );
-	}
-
-	/**
 	 * @param string $type Column type
 	 */
 	public function deregister_column_type( $type ) {
@@ -538,6 +523,10 @@ abstract class ListScreen {
 	 * @param Column $column
 	 */
 	public function register_column_type( Column $column ) {
+		$this->column_types[ $column->get_type() ] = $column;
+
+		return;
+		// todo: remove
 		if ( ! $column->get_type() ) {
 			return;
 		}
@@ -553,7 +542,10 @@ abstract class ListScreen {
 			return;
 		}
 
-		$this->column_types[ $column->get_type() ] = $column;
+		// todo: remove
+		//ColumnTypes::instance()->register_column( $this, $column );
+
+//		$this->column_types[ $column->get_type() ] = $column;
 	}
 
 	/**
@@ -593,37 +585,37 @@ abstract class ListScreen {
 		$this->column_types = array();
 
 		// Register default columns
-		foreach ( $this->get_original_columns() as $type => $label ) {
-
-			// Ignore the mandatory checkbox column
-			if ( 'cb' === $type ) {
-				continue;
-			}
-
-			$column = new Column();
-
-			$column
-				->set_type( $type )
-				->set_original( true );
-
-			$this->register_column_type( $column );
-		}
+//		foreach ( $this->get_original_columns() as $type => $label ) {
+//
+//			// Ignore the mandatory checkbox column
+//			if ( 'cb' === $type ) {
+//				continue;
+//			}
+//
+//			$column = new Column();
+//
+//			$column
+//				->set_type( $type )
+//				->set_original( true );
+//
+//			$this->register_column_type( $column );
+//		}
 
 		// Placeholder columns
-		foreach ( new Integrations() as $integration ) {
-			if ( ! $integration->show_placeholder( $this ) ) {
-				continue;
-			}
-
-			$plugin_info = new PluginInformation( $integration->get_basename() );
-
-			if ( $integration->is_plugin_active() && ! $plugin_info->is_active() ) {
-				$column = new Placeholder();
-				$column->set_integration( $integration );
-
-				$this->register_column_type( $column );
-			}
-		}
+//		foreach ( new Integrations() as $integration ) {
+//			if ( ! $integration->show_placeholder( $this ) ) {
+//				continue;
+//			}
+//
+//			$plugin_info = new PluginInformation( $integration->get_basename() );
+//
+//			if ( $integration->is_plugin_active() && ! $plugin_info->is_active() ) {
+//				$column = new Placeholder();
+//				$column->set_integration( $integration );
+//
+//				$this->register_column_type( $column );
+//			}
+//		}
 
 		// Load Custom columns
 		$this->register_column_types();
@@ -654,69 +646,19 @@ abstract class ListScreen {
 	}
 
 	/**
-	 * @param string $type Column type
-	 *
-	 * @return bool
-	 */
-	private function is_original_column( $type ) {
-		$column = $this->get_column_by_type( $type );
-
-		if ( ! $column ) {
-			return false;
-		}
-
-		return $column->is_original();
-	}
-
-	/**
 	 * @param string $column_name Column name
 	 *
 	 * @since 3.0
 	 */
+	// todo: remove & deprecated
 	public function deregister_column( $column_name ) {
 		unset( $this->columns[ $column_name ] );
 	}
 
 	/**
-	 * @param array $settings Column options
-	 *
-	 * @return Column|false
-	 */
-	public function create_column( array $settings ) {
-		if ( ! isset( $settings['type'] ) ) {
-			return false;
-		}
-
-		$class = $this->get_class_by_type( $settings['type'] );
-
-		if ( ! $class ) {
-			return false;
-		}
-
-		/* @var Column $column */
-		$column = new $class();
-		$column->set_list_screen( $this )
-		       ->set_type( $settings['type'] );
-
-		if ( isset( $settings['name'] ) ) {
-			$column->set_name( $settings['name'] );
-		}
-
-		// Mark as original
-		if ( $this->is_original_column( $settings['type'] ) ) {
-			$column->set_original( true );
-			$column->set_name( $settings['type'] );
-		}
-
-		$column->set_options( $settings );
-
-		return $column;
-	}
-
-	/**
 	 * @param Column $column
 	 */
-	protected function register_column( Column $column ) {
+	public function register_column( Column $column ) {
 		$this->columns[ $column->get_name() ] = $column;
 
 		/**
@@ -728,7 +670,8 @@ abstract class ListScreen {
 		 *
 		 * @since 3.0.5
 		 */
-		do_action( 'ac/list_screen/column_registered', $column, $this );
+		// todo: remove?
+		//do_action( 'ac/list_screen/column_registered', $column, $this );
 	}
 
 	/**
@@ -745,10 +688,13 @@ abstract class ListScreen {
 	/**
 	 * @since 3.0
 	 */
+	// todo: set in ListScreenFactory
 	private function set_columns() {
 		foreach ( $this->get_settings() as $name => $data ) {
+
 			$data['name'] = $name;
-			$column = $this->create_column( $data );
+
+			$column = ( new ColumnFactory )->create( $data['type'], $data, $this );
 
 			if ( $column ) {
 				$this->register_column( $column );
@@ -758,7 +704,16 @@ abstract class ListScreen {
 		// Nothing stored. Use WP default columns.
 		if ( null === $this->columns ) {
 			foreach ( $this->get_original_columns() as $type => $label ) {
-				if ( $column = $this->create_column( array( 'type' => $type, 'original' => true ) ) ) {
+
+				$data = [
+					'original' => true,
+					'type'     => $type,
+					'name'     => $type,
+				];
+
+				$column = ( new ColumnFactory )->create( $type, $data, $this );
+
+				if ( $column ) {
 					$this->register_column( $column );
 				}
 			}
@@ -827,6 +782,58 @@ abstract class ListScreen {
 		$value = apply_filters( 'ac/column/value', $value, $id, $column );
 
 		return $value;
+	}
+
+	/**
+	 * @param string $type
+	 *
+	 * @return false|string
+	 * @deprecated NEWVERSION
+	 */
+	public function get_class_by_type( $type ) {
+		_deprecated_function( __METHOD__, 'NEWVERSION' );
+
+		return false;
+	}
+
+	/**
+	 * @param array $settings Column options
+	 *
+	 * @return Column|false
+	 * @deprecated NEWVERSION
+	 */
+	public function create_column( array $settings ) {
+		_deprecated_function( __METHOD__, 'NEWVERSION', 'AC\ColumnFactory::create( $type, $settings, $list_screen )' );
+
+		return ( new ColumnFactory() )->create( $settings['type'], $settings, $this );
+		//		if ( ! isset( $settings['type'] ) ) {
+		//			return false;
+		//		}
+		//
+		//		$class = $this->get_class_by_type( $settings['type'] );
+		//
+		//		if ( ! $class ) {
+		//			return false;
+		//		}
+		//
+		//		/* @var Column $column */
+		//		$column = new $class();
+		//		$column->set_list_screen( $this )
+		//		       ->set_type( $settings['type'] );
+		//
+		//		if ( isset( $settings['name'] ) ) {
+		//			$column->set_name( $settings['name'] );
+		//		}
+		//
+		//		// Mark as original
+		//		if ( $this->is_original_column( $settings['type'] ) ) {
+		//			$column->set_original( true );
+		//			$column->set_name( $settings['type'] );
+		//		}
+		//
+		//		$column->set_options( $settings );
+		//
+		//		return $column;
 	}
 
 	/**

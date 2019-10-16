@@ -118,6 +118,7 @@ class Column {
 	 */
 	public function get_label() {
 		if ( null === $this->label ) {
+			// todo: remove
 			$this->set_label( $this->get_list_screen()->get_original_label( $this->get_type() ) );
 		}
 

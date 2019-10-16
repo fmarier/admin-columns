@@ -22,9 +22,13 @@ class Refresh extends Column {
 
 		$settings = $options[ $name ];
 
+		if ( empty( $settings['type'] ) ) {
+			wp_die();
+		}
+
 		$settings['name'] = $name;
 
-		return $this->list_screen->create_column( $settings );
+		return ( new AC\ColumnFactory() )->create( $settings['type'], $settings, $this->list_screen );
 	}
 
 }

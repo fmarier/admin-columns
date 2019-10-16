@@ -12,7 +12,6 @@ use AC\ListScreen;
 use AC\ListScreenFactory;
 use AC\ListScreenGroups;
 use AC\ListScreenRepository\Aggregate;
-use AC\ListScreenRepositoryAggregate;
 use AC\Message\Notice;
 use AC\Preferences;
 use AC\Registrable;
