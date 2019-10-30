@@ -69,7 +69,7 @@ class AdminColumns extends Plugin {
 
 		$list_screen_factory = new ListScreenFactory();
 		$this->list_screen_repository = new ListScreenRepository\Aggregate( $list_screen_factory );
-		$this->list_screen_repository->register_repository( new ListScreenRepository\DataBase( $list_screen_factory ) )
+		$this->list_screen_repository->register_repository( new ListScreenRepository\DataBase\Options( $list_screen_factory ) )
 		                             ->register_repository( new ListScreenRepository\FilePHP( $list_screen_factory, $this->api ) );
 
 		foreach ( $modules as $module ) {
